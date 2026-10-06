@@ -1,7 +1,7 @@
 {
   "name": "专属私密空间",
   "short_name": "私密空间",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#0d0d12",
   "theme_color": "#0d0d12",

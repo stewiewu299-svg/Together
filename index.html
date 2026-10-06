@@ -5,23 +5,28 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>专属私密空间</title>
     
+    <!-- PWA / iOS WebApp Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="私密空间">
     <link rel="apple-touch-icon" href="https://supabase.com/favicon/apple-touch-icon.png">
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0d0d12">
     
+    <!-- Supabase JS SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
         :root {
             --bg-color: #0d0d12;
-            --card-bg: #16161f;
+            --card-bg: #161622;
+            --card-border: rgba(255, 255, 255, 0.08);
             --accent-taoran: #3ecf8e;
             --accent-qiqi: #ff758c;
-            --text-primary: #ffffff;
-            --text-secondary: #a0a0b0;
-            --input-bg: #1e1e2a;
+            --accent-whisper: #a78bfa;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            --input-bg: #1f1f2e;
         }
 
         * {
@@ -43,16 +48,23 @@
             overflow: hidden;
         }
 
+        /* 顶栏 */
         header {
-            padding: 16px 20px;
-            background: rgba(22, 22, 31, 0.8);
+            padding: 12px 16px;
+            background: rgba(22, 22, 34, 0.85);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            border-bottom: 1px solid var(--card-border);
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .header-top {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            z-index: 10;
         }
 
         .user-badge {
@@ -60,7 +72,7 @@
             align-items: center;
             gap: 8px;
             font-weight: 600;
-            font-size: 16px;
+            font-size: 15px;
         }
 
         .avatar {
@@ -72,24 +84,89 @@
             justify-content: center;
             font-size: 14px;
             font-weight: bold;
-            color: #000;
+            color: #0d0d12;
         }
 
         .avatar.taoran { background: var(--accent-taoran); }
         .avatar.qiqi { background: var(--accent-qiqi); }
 
-        .status-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #3ecf8e;
-            box-shadow: 0 0 8px #3ecf8e;
+        .status-tag {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            background: rgba(255,255,255,0.05);
+            padding: 4px 10px;
+            border-radius: 12px;
         }
 
+        .status-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #3ecf8e;
+            box-shadow: 0 0 6px #3ecf8e;
+        }
+
+        /* 异地实时天气栏 */
+        .weather-bar {
+            display: flex;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 12px;
+            padding: 8px 12px;
+            font-size: 12px;
+            border: 1px solid rgba(255,255,255,0.04);
+        }
+
+        .weather-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .weather-loc {
+            color: var(--text-secondary);
+        }
+
+        .weather-temp {
+            font-weight: 600;
+            color: #fff;
+        }
+
+        /* 快捷功能页签 */
+        .nav-tabs {
+            display: flex;
+            background: rgba(0,0,0,0.2);
+            padding: 3px;
+            border-radius: 10px;
+            gap: 4px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+        }
+
+        /* 主聊天内容区 */
         #chat-container {
             flex: 1;
             overflow-y: auto;
-            padding: 20px;
+            padding: 16px;
             display: flex;
             flex-direction: column;
             gap: 14px;
@@ -99,8 +176,8 @@
         .message-row {
             display: flex;
             flex-direction: column;
-            max-width: 78%;
-            animation: fadeIn 0.25s ease-out;
+            max-width: 82%;
+            animation: fadeIn 0.2s ease-out;
         }
 
         @keyframes fadeIn {
@@ -131,7 +208,7 @@
             font-size: 15px;
             line-height: 1.45;
             word-break: break-word;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
         }
 
         .message-row.me .bubble {
@@ -144,8 +221,66 @@
         .message-row.other .bubble {
             background: var(--card-bg);
             color: var(--text-primary);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--card-border);
             border-bottom-left-radius: 4px;
+        }
+
+        /* 语音气泡样式 */
+        .bubble-voice {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            min-width: 130px;
+        }
+
+        .voice-icon {
+            font-size: 18px;
+        }
+
+        /* 悄悄话胶囊卡片 */
+        .bubble-whisper {
+            background: linear-gradient(135deg, rgba(167, 139, 250, 0.2), rgba(139, 92, 246, 0.1)) !important;
+            border: 1px solid rgba(167, 139, 250, 0.4) !important;
+            color: #e9d5ff !important;
+            box-shadow: 0 0 12px rgba(167, 139, 250, 0.15) !important;
+        }
+
+        .whisper-tag {
+            font-size: 10px;
+            font-weight: bold;
+            color: var(--accent-whisper);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* 音乐分享卡片 */
+        .bubble-music {
+            background: rgba(30, 30, 45, 0.95) !important;
+            border: 1px solid rgba(255, 255, 255, 0.12) !important;
+            padding: 14px !important;
+            width: 240px;
+        }
+
+        .music-title {
+            font-weight: 600;
+            font-size: 14px;
+            color: #fff;
+            margin-bottom: 2px;
+        }
+
+        .music-artist {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        audio {
+            width: 100%;
+            height: 32px;
+            margin-top: 4px;
+            border-radius: 8px;
         }
 
         .time-tag {
@@ -155,13 +290,38 @@
             padding: 0 4px;
         }
 
+        /* 输入底栏 */
         footer {
-            padding: 12px 16px;
-            background: rgba(22, 22, 31, 0.95);
+            padding: 10px 14px;
+            background: rgba(22, 22, 34, 0.95);
             backdrop-filter: blur(20px);
-            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            border-top: 1px solid var(--card-border);
             display: flex;
-            gap: 10px;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .footer-tools {
+            display: flex;
+            gap: 8px;
+        }
+
+        .tool-btn {
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.08);
+            color: var(--text-primary);
+            padding: 6px 12px;
+            border-radius: 14px;
+            font-size: 12px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .input-row {
+            display: flex;
+            gap: 8px;
             align-items: center;
         }
 
@@ -172,7 +332,7 @@
             padding: 4px 16px;
             display: flex;
             align-items: center;
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--card-border);
         }
 
         input {
@@ -185,7 +345,7 @@
             padding: 8px 0;
         }
 
-        button {
+        .send-btn {
             background: var(--accent-taoran);
             color: #0d0d12;
             border: none;
@@ -194,62 +354,183 @@
             font-weight: 600;
             font-size: 14px;
             cursor: pointer;
-            transition: transform 0.1s active;
         }
 
-        button:active {
-            transform: scale(0.95);
-        }
-
-        .empty-state {
-            margin: auto;
-            text-align: center;
-            color: var(--text-secondary);
+        /* 语音按住录音按钮 */
+        .record-btn {
+            width: 100%;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--card-border);
+            border-radius: 22px;
+            padding: 10px;
             font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            user-select: none;
+            -webkit-user-select: none;
         }
-    </style>
 
-    <script>
-        (function(document, navigator, standalone) {
-            if ((standalone in navigator) && navigator[standalone]) {
-                var c2g;
-                document.addEventListener('click', function(e) {
-                    c2g = e.target;
-                    while (c2g.nodeName !== 'A' && c2g.nodeName !== 'BODY') {
-                        c2g = c2g.parentNode;
-                    }
-                    if ('href' in c2g && (c2g.href.indexOf('http') || c2g.href.indexOf(document.location.host) !== -1)) {
-                        e.preventDefault();
-                        document.location.href = c2g.href;
-                    }
-                }, false);
-            }
-        })(document, window.navigator, 'standalone');
-    </script>
+        .record-btn.recording {
+            background: #ef4444;
+            color: #fff;
+            animation: pulse 1s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.6; }
+            100% { opacity: 1; }
+        }
+
+        /* 弹窗 Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            padding: 20px;
+        }
+
+        .modal-card {
+            background: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 20px;
+            width: 100%;
+            max-width: 340px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #fff;
+        }
+
+        .modal-input {
+            background: var(--input-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 10px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .modal-btn {
+            padding: 8px 16px;
+            border-radius: 12px;
+            font-size: 13px;
+            border: none;
+            cursor: pointer;
+        }
+
+        .modal-btn.cancel { background: rgba(255,255,255,0.1); color: #fff; }
+        .modal-btn.confirm { background: var(--accent-taoran); color: #000; font-weight: 600; }
+    </style>
 </head>
 <body>
 
     <header>
-        <div class="user-badge">
-            <div id="user-avatar" class="avatar">然</div>
-            <span id="user-display-name">身份确认中...</span>
+        <div class="header-top">
+            <div class="user-badge">
+                <div id="user-avatar" class="avatar">然</div>
+                <span id="user-display-name">身份确认中...</span>
+            </div>
+            <div class="status-tag">
+                <div class="status-dot"></div>
+                <span>双端同步中</span>
+            </div>
         </div>
-        <div style="display:flex; align-items:center; gap:6px;">
-            <div class="status-dot"></div>
-            <span style="font-size:12px; color:var(--text-secondary);">实时连接</span>
+
+        <!-- 异地实时天气 -->
+        <div class="weather-bar">
+            <div class="weather-item">
+                <span class="weather-loc">抚顺/沈阳:</span>
+                <span class="weather-temp" id="weather-shenyang">加载中...</span>
+            </div>
+            <div class="weather-item">
+                <span class="weather-loc">春武里/曼谷:</span>
+                <span class="weather-temp" id="weather-chonburi">加载中...</span>
+            </div>
+        </div>
+
+        <!-- 功能切换页签 -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="switchMode('text')">💬 聊天模式</button>
+            <button class="tab-btn" onclick="switchMode('voice')">🎙️ 语音模式</button>
         </div>
     </header>
 
+    <!-- 聊天内容区域 -->
     <div id="chat-container">
-        <div class="empty-state" id="empty-hint">正在加载专属聊天记录...</div>
+        <div style="margin:auto; text-align:center; color:var(--text-secondary); font-size:13px;" id="empty-hint">
+            正在加载专属空间记录...
+        </div>
     </div>
 
+    <!-- 底部输入栏 -->
     <footer>
-        <div class="input-wrapper">
-            <input type="text" id="msg-input" placeholder="发送私密消息..." onkeydown="if(event.key==='Enter') sendMessage()">
+        <div class="footer-tools">
+            <button class="tool-btn" onclick="openWhisperModal()">✉️ 悄悄话</button>
+            <button class="tool-btn" onclick="openMusicModal()">🎵 共享音乐</button>
         </div>
-        <button id="send-btn" onclick="sendMessage()">发送</button>
+
+        <!-- 文本模式输入 -->
+        <div class="input-row" id="text-input-row">
+            <div class="input-wrapper">
+                <input type="text" id="msg-input" placeholder="写下想说的话..." onkeydown="if(event.key==='Enter') sendTextMessage()">
+            </div>
+            <button class="send-btn" id="send-btn" onclick="sendTextMessage()">发送</button>
+        </div>
+
+        <!-- 语音模式按住录音 -->
+        <div class="input-row" id="voice-input-row" style="display:none;">
+            <button class="record-btn" id="record-btn" onmousedown="startRecord()" onmouseup="stopRecord()" ontouchstart="startRecord(event)" ontouchend="stopRecord(event)">
+                🎙️ 按住 说话（松开发送）
+            </button>
+        </div>
     </footer>
+
+    <!-- 悄悄话弹窗 -->
+    <div class="modal-overlay" id="whisper-modal">
+        <div class="modal-card">
+            <div class="modal-title">✉️ 发送密语胶囊 / 悄悄话</div>
+            <textarea class="modal-input" id="whisper-text" rows="3" placeholder="只有你们两个人能看到的私密想法..."></textarea>
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="closeModal('whisper-modal')">取消</button>
+                <button class="modal-btn confirm" onclick="sendWhisper()">塞入胶囊</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 共享音乐弹窗 -->
+    <div class="modal-overlay" id="music-modal">
+        <div class="modal-card">
+            <div class="modal-title">🎵 分享一首歌</div>
+            <input class="modal-input" id="music-title-input" placeholder="歌曲名称 (例如: Dark R&B Demo)">
+            <input class="modal-input" id="music-artist-input" placeholder="歌手 / 制作人 (例如: Bowen)">
+            <input class="modal-input" id="music-url-input" placeholder="音频链接 (.mp3 网址或网盘直链)">
+            <div class="modal-actions">
+                <button class="modal-btn cancel" onclick="closeModal('music-modal')">取消</button>
+                <button class="modal-btn confirm" onclick="sendMusic()">添加到播放框</button>
+            </div>
+        </div>
+    </div>
 
     <script>
         const SUPABASE_URL = "https://gjvbnhyckfyqiwvwvfys.supabase.co";
@@ -260,6 +541,7 @@
         const isTaoran = location.href.includes("msqiqisingular");
         const currentUser = isTaoran ? "陶然" : "齐琦";
         
+        // 身份初始化
         document.getElementById('user-display-name').innerText = currentUser + " 端";
         const avatarEl = document.getElementById('user-avatar');
         avatarEl.innerText = currentUser[0];
@@ -273,12 +555,29 @@
         const chatContainer = document.getElementById('chat-container');
         const emptyHint = document.getElementById('empty-hint');
 
+        // 切换模式 (文本 / 语音)
+        function switchMode(mode) {
+            const btns = document.querySelectorAll('.tab-btn');
+            btns.forEach(b => b.classList.remove('active'));
+            if (mode === 'text') {
+                btns[0].classList.add('active');
+                document.getElementById('text-input-row').style.display = 'flex';
+                document.getElementById('voice-input-row').style.display = 'none';
+            } else {
+                btns[1].classList.add('active');
+                document.getElementById('text-input-row').style.display = 'none';
+                document.getElementById('voice-input-row').style.display = 'flex';
+            }
+        }
+
+        // 格式化时间
         function formatTime(isoString) {
             if (!isoString) return '';
             const d = new Date(isoString);
             return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
         }
 
+        // 渲染消息
         function renderMessage(msg) {
             if (emptyHint) emptyHint.style.display = 'none';
 
@@ -286,9 +585,48 @@
             const row = document.createElement('div');
             row.className = `message-row ${isMe ? 'me' : 'other'}`;
 
+            let contentHtml = '';
+            const rawContent = msg.content || '';
+
+            if (rawContent.startsWith('[VOICE]')) {
+                // 语音消息
+                const audioUrl = rawContent.replace('[VOICE]', '');
+                contentHtml = `
+                    <div class="bubble bubble-voice" onclick="playAudio('${audioUrl}')">
+                        <span class="voice-icon">🎙️</span>
+                        <span>点击播放语音消息</span>
+                    </div>
+                `;
+            } else if (rawContent.startsWith('[WHISPER]')) {
+                // 悄悄话胶囊
+                const whisperText = rawContent.replace('[WHISPER]', '');
+                contentHtml = `
+                    <div class="bubble bubble-whisper">
+                        <div class="whisper-tag">✨ SECRET CAPSULE</div>
+                        <div>${escapeHtml(whisperText)}</div>
+                    </div>
+                `;
+            } else if (rawContent.startsWith('[MUSIC]')) {
+                // 共享音乐卡片
+                const parts = rawContent.replace('[MUSIC]', '').split('|');
+                const title = parts[0] || '未知曲目';
+                const artist = parts[1] || '未知歌手';
+                const audioUrl = parts[2] || '';
+                contentHtml = `
+                    <div class="bubble bubble-music">
+                        <div class="music-title">🎵 ${escapeHtml(title)}</div>
+                        <div class="music-artist">${escapeHtml(artist)}</div>
+                        <audio controls src="${escapeHtml(audioUrl)}"></audio>
+                    </div>
+                `;
+            } else {
+                // 普通文本
+                contentHtml = `<div class="bubble">${escapeHtml(rawContent)}</div>`;
+            }
+
             row.innerHTML = `
                 <div class="sender-name">${msg.sender}</div>
-                <div class="bubble">${escapeHtml(msg.content)}</div>
+                ${contentHtml}
                 <div class="time-tag">${formatTime(msg.created_at)}</div>
             `;
 
@@ -296,10 +634,16 @@
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
+        function playAudio(url) {
+            const audio = new Audio(url);
+            audio.play().catch(e => alert("播放失败或格式不支持"));
+        }
+
         function escapeHtml(str) {
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
         }
 
+        // 加载历史记录
         async function loadHistory() {
             try {
                 const { data, error } = await supabase
@@ -308,8 +652,7 @@
                     .order('created_at', { ascending: true });
 
                 if (error) {
-                    console.error("读取数据库失败:", error);
-                    emptyHint.innerText = "读取受限，请确保在 Supabase 中关闭了 RLS 限制";
+                    emptyHint.innerText = "读取记录失败: " + error.message;
                     return;
                 }
 
@@ -317,7 +660,7 @@
                 if (data && data.length > 0) {
                     data.forEach(renderMessage);
                 } else {
-                    emptyHint.innerText = "暂无消息，发送第一条对话吧！";
+                    emptyHint.innerText = "暂无消息，发送第一条专属留言吧！";
                     chatContainer.appendChild(emptyHint);
                 }
             } catch (err) {
@@ -325,22 +668,126 @@
             }
         }
 
-        async function sendMessage() {
+        // 发送普通文本
+        async function sendTextMessage() {
             const input = document.getElementById('msg-input');
             const content = input.value.trim();
             if (!content) return;
-
             input.value = '';
 
-            const { error } = await supabase
-                .from('messages')
-                .insert([{ content: content, sender: currentUser }]);
+            await supabase.from('messages').insert([{ content: content, sender: currentUser }]);
+        }
 
-            if (error) {
-                alert("发送失败！请检查网络或 Supabase 配置。\n错误信息: " + error.message);
+        // 悄悄话
+        function openWhisperModal() { document.getElementById('whisper-modal').style.display = 'flex'; }
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        async function sendWhisper() {
+            const text = document.getElementById('whisper-text').value.trim();
+            if (!text) return;
+            closeModal('whisper-modal');
+            document.getElementById('whisper-text').value = '';
+
+            await supabase.from('messages').insert([{ content: '[WHISPER]' + text, sender: currentUser }]);
+        }
+
+        // 共享音乐
+        function openMusicModal() { document.getElementById('music-modal').style.display = 'flex'; }
+
+        async function sendMusic() {
+            const title = document.getElementById('music-title-input').value.trim() || '未命名音乐';
+            const artist = document.getElementById('music-artist-input').value.trim() || 'Bowen';
+            const url = document.getElementById('music-url-input').value.trim();
+
+            if (!url) {
+                alert("请输入有效的音频文件网址！");
+                return;
+            }
+
+            closeModal('music-modal');
+            await supabase.from('messages').insert([{
+                content: `[MUSIC]${title}|${artist}|${url}`,
+                sender: currentUser
+            }]);
+        }
+
+        // 语音录制 (MediaRecorder)
+        let mediaRecorder;
+        let audioChunks = [];
+
+        async function startRecord(e) {
+            if (e) e.preventDefault();
+            audioChunks = [];
+            const btn = document.getElementById('record-btn');
+            btn.classList.add('recording');
+            btn.innerText = '🔴 正在录音... (松开自动发送)';
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    await uploadAndSendAudio(audioBlob);
+                };
+                mediaRecorder.start();
+            } catch (err) {
+                alert("无法开启麦克风权限！请在浏览器设置中允许麦克风权限。");
+                btn.classList.remove('recording');
+                btn.innerText = '🎙️ 按住 说话（松开发送）';
             }
         }
 
+        function stopRecord(e) {
+            if (e) e.preventDefault();
+            const btn = document.getElementById('record-btn');
+            btn.classList.remove('recording');
+            btn.innerText = '🎙️ 按住 说话（松开发送）';
+
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+        }
+
+        async function uploadAndSendAudio(blob) {
+            const fileName = `voice_${Date.now()}_${Math.random().toString(36).substring(7)}.webm`;
+            
+            // 上传到 Supabase Storage 'media' Bucket
+            const { data, error } = await supabase.storage.from('media').upload(fileName, blob);
+
+            if (error) {
+                alert("语音上传失败，请确认已在 Supabase 中新建名为 'media' 的 Public Storage Bucket！");
+                return;
+            }
+
+            const { data: publicUrlData } = supabase.storage.from('media').getPublicUrl(fileName);
+            const publicUrl = publicUrlData.publicUrl;
+
+            await supabase.from('messages').insert([{ content: '[VOICE]' + publicUrl, sender: currentUser }]);
+        }
+
+        // 异地天气实时更新 (Open-Meteo API)
+        async function fetchWeather() {
+            try {
+                // 抚顺/沈阳: 41.8, 123.4
+                const res1 = await fetch('https://api.open-meteo.com/v1/forecast?latitude=41.8&longitude=123.4&current_weather=true');
+                const data1 = await res1.json();
+                if (data1.current_weather) {
+                    document.getElementById('weather-shenyang').innerText = `${data1.current_weather.temperature}°C`;
+                }
+
+                // 春武里/曼谷: 13.1, 100.9
+                const res2 = await fetch('https://api.open-meteo.com/v1/forecast?latitude=13.1&longitude=100.9&current_weather=true');
+                const data2 = await res2.json();
+                if (data2.current_weather) {
+                    document.getElementById('weather-chonburi').innerText = `${data2.current_weather.temperature}°C`;
+                }
+            } catch (e) {
+                console.error("天气加载失败", e);
+            }
+        }
+
+        // Realtime 监听新消息
         supabase
             .channel('public:messages')
             .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, payload => {
@@ -348,7 +795,14 @@
             })
             .subscribe();
 
+        // 启动加载
         loadHistory();
+        fetchWeather();
+
+        // 注册 Service Worker (支持独立 APP PWA 模式)
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW Fail', err));
+        }
     </script>
 </body>
 </html>
