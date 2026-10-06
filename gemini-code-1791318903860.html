@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Our Space | 陶然 & 齐琦</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body { background: #f5f6fa; color: #2c3e50; display: flex; flex-direction: column; height: 100vh; }
+    header { background: #fff; padding: 15px 20px; border-bottom: 1px solid #eee; text-align: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 2px 5px rgba(0,0,0,0.03); }
+    .tabs { display: flex; background: #fff; border-bottom: 1px solid #eee; }
+    .tab-btn { flex: 1; padding: 12px; text-align: center; background: none; border: none; font-size: 0.95rem; font-weight: 600; color: #7f8c8d; cursor: pointer; }
+    .tab-btn.active { color: #6c5ce7; border-bottom: 3px solid #6c5ce7; }
+    .tab-content { display: none; flex: 1; overflow-y: auto; padding: 15px; }
+    .tab-content.active { display: flex; flex-direction: column; }
+    .card { background: #fff; border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+    .msg-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; margin-bottom: 10px; }
+    .msg-item { max-width: 80%; padding: 10px 14px; border-radius: 12px; font-size: 0.95rem; line-height: 1.4; word-break: break-word; }
+    .msg-item.me { align-self: flex-end; background: #6c5ce7; color: #fff; }
+    .msg-item.other { align-self: flex-start; background: #e0e0e0; color: #333; }
+    .input-box { display: flex; gap: 8px; background: #fff; padding: 10px; border-top: 1px solid #eee; }
+    input[type="text"], textarea { flex: 1; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.95rem; outline: none; }
+    button { background: #6c5ce7; color: #fff; border: none; padding: 10px 16px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+    button.secondary { background: #00b894; }
+    button.recording { background: #d63031; animation: pulse 1s infinite; }
+    audio { width: 100%; margin-top: 5px; }
+    @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+  </style>
+</head>
+<body>
+
+  <header>二人专属空间</header>
+
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('chat')">💬 互相留言 & 语音</button>
+    <button class="tab-btn" onclick="switchTab('whisper')">🔒 悄悄话</button>
+    <button class="tab-btn" onclick="switchTab('weather')">🌤️ 实时天气</button>
+  </div>
+
+  <!-- Tab 1: 留言板 + 语音 -->
+  <div id="chat" class="tab-content active">
+    <div class="msg-list" id="chatList"></div>
+    <div class="input-box">
+      <input type="text" id="textInput" placeholder="写下想说的话...">
+      <button id="recordBtn" class="secondary" onclick="toggleRecord()">🎤 录音</button>
+      <button onclick="sendText()">发送</button>
+    </div>
+  </div>
+
+  <!-- Tab 2: 悄悄话 -->
+  <div id="whisper" class="tab-content">
+    <div class="card">
+      <h3>写给对方的悄悄话</h3>
+      <p style="font-size: 0.85rem; color: #7f8c8d; margin-top: 4px;">在这里留下只有彼此能看到的秘密小心思。</p>
+    </div>
+    <div class="msg-list" id="whisperList"></div>
+    <div class="input-box">
+      <textarea id="whisperInput" rows="2" placeholder="输入悄悄话..."></textarea>
+      <button onclick="sendWhisper()">留下悄悄话</button>
+    </div>
+  </div>
+
+  <!-- Tab 3: 天气 -->
+  <div id="weather" class="tab-content">
+    <div class="card">
+      <h3>沈阳 / 抚顺实时天气</h3>
+      <div id="weatherInfo" style="margin-top: 10px;">加载天气中...</div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://stewiewu299.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InN0ZXdpZXd1Mjk5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAwMDAwMDAsImV4cCI6MjA1NTU1Ntext'; 
+    // 请确认上面的 SUPABASE_URL 和 KEY 是你之前的正确凭证
+
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById(tabId).classList.add('active');
+      if(tabId === 'weather') loadWeather();
+    }
+
+    // 1. 发送文字
+    async function sendText() {
+      const input = document.getElementById('textInput');
+      const val = input.value.trim();
+      if(!val) return;
+      await supabase.from('messages').insert([{ content: val, type: 'text' }]);
+      input.value = '';
+      loadMessages();
+    }
+
+    // 2. 录制并发送 Base64 语音 (无需 Storage 存储桶权限！)
+    async function toggleRecord() {
+      const btn = document.getElementById('recordBtn');
+      if (!isRecording) {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        audioChunks = [];
+        mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+        mediaRecorder.onstop = async () => {
+          const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+          const reader = new FileReader();
+          reader.readAsDataURL(audioBlob);
+          reader.onloadend = async () => {
+            const base64Audio = reader.result;
+            await supabase.from('messages').insert([{ content: base64Audio, type: 'audio' }]);
+            loadMessages();
+          };
+        };
+        mediaRecorder.start();
+        isRecording = true;
+        btn.textContent = '⏹ Stop';
+        btn.classList.add('recording');
+      } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        btn.textContent = '🎤 录音';
+        btn.classList.remove('recording');
+      }
+    }
+
+    // 3. 加载留言与语音
+    async function loadMessages() {
+      const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: true });
+      const container = document.getElementById('chatList');
+      if(!data) return;
+      container.innerHTML = '';
+      data.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'msg-item me';
+        if (m.type === 'audio') {
+          div.innerHTML = `<audio controls src="${m.content}"></audio>`;
+        } else {
+          div.textContent = m.content;
+        }
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    // 4. 悄悄话功能
+    async function sendWhisper() {
+      const input = document.getElementById('whisperInput');
+      const val = input.value.trim();
+      if(!val) return;
+      await supabase.from('messages').insert([{ content: '[悄悄话] ' + val, type: 'whisper' }]);
+      input.value = '';
+      loadWhispers();
+    }
+
+    async function loadWhispers() {
+      const { data } = await supabase.from('messages').select('*').eq('type', 'whisper').order('created_at', { ascending: true });
+      const container = document.getElementById('whisperList');
+      if(!data) return;
+      container.innerHTML = '';
+      data.forEach(m => {
+        const div = document.createElement('div');
+        div.className = 'msg-item other';
+        div.textContent = m.content;
+        container.appendChild(div);
+      });
+    }
+
+    // 5. 获取实时天气
+    async function loadWeather() {
+      const el = document.getElementById('weatherInfo');
+      try {
+        const res = await fetch('https://wttr.in/Shenyang?format=3');
+        const text = await res.text();
+        el.innerHTML = `<b>当前天气：</b> ${text}`;
+      } catch(e) {
+        el.textContent = '天气获取失败';
+      }
+    }
+
+    // 初始加载
+    loadMessages();
+    loadWhispers();
+    setInterval(loadMessages, 5000); // 5秒轮询刷新
+  </script>
+</body>
+</html>
